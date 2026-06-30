@@ -1,0 +1,34 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: ds-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-ds}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ds_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-user} -d ${POSTGRES_DB:-ds}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  typesense:
+    image: typesense/typesense:27.1
+    container_name: ds-typesense
+    restart: unless-stopped
+    command: ["--data-dir", "/data", "--api-key=${TYPESENSE_API_KEY:-dev_typesense_key}", "--enable-cors"]
+    ports:
+      - "8108:8108"
+    volumes:
+      - ds_typesense:/data
+    # No container healthcheck: the typesense image ships no curl/wget.
+    # Validate from the host instead: curl http://localhost:8108/health
+
+volumes:
+  ds_pgdata:
+  ds_typesense:
