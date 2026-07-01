@@ -125,8 +125,7 @@ One GitHub repo
 │
 ├── specs/                    # Spec Kit specs
 │
-├── docker-compose.yml        # Local Postgres + Typesense
-├── railway.json              # Railway deployment hints if needed
+├── railway.json              # Railway deployment config-as-code
 ├── package.json
 ├── pnpm-workspace.yaml
 ├── README.md
@@ -155,7 +154,7 @@ Recommended Railway project services:
 
 1. **Next.js service** from the GitHub repo.
 2. **PostgreSQL service** from Railway.
-3. **Typesense service** using Docker image or Railway template.
+3. **Typesense service** from the official Typesense image (Railway template/service).
 
 Optional later:
 
@@ -779,13 +778,11 @@ Add scripts gradually as specs need them.
 
 ```bash
 pnpm install
-cp .env.example .env
-docker compose up -d
-pnpm db:generate
+cp .env.example .env      # set DATABASE_URL + TYPESENSE_* to reachable services (e.g. Railway)
 pnpm db:migrate
 pnpm import:products
-pnpm search:reindex
-pnpm search:smoke
+pnpm reindex:products
+pnpm smoke:search
 pnpm dev
 ```
 

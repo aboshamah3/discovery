@@ -24,29 +24,29 @@ backed by PostgreSQL. This repository is built spec-by-spec; see
 ## Layout
 
 ```
-apps/web              # Next.js app (placeholder page + /api/health)
+apps/web              # Next.js app (product discovery UI + /api/* endpoints)
 packages/shared       # Shared constants & types (@ds/shared)
 packages/db           # PostgreSQL access (@ds/db) — pg client + SQL migrations (no ORM)
-packages/search       # Typesense client home (@ds/search) — placeholder until Spec 004
+packages/search       # Typesense client + query builder (@ds/search)
 packages/import       # Catalog import pipeline (@ds/import) — fetch → validate → upsert
 packages/config       # Shared TS base config (@ds/config)
 scripts/              # CLIs: import-products, reindex-products, smoke-search; prepare-standalone (Spec 006)
 railway.json          # Railway deploy config-as-code (Spec 006)
-docker-compose.yml    # Local Postgres + Typesense
 ```
 
 ## Prerequisites
 
 - Node.js 20+ (`.nvmrc` pins 20) — `corepack enable` to get pnpm
 - pnpm 9
-- Docker + Docker Compose
+- A reachable **PostgreSQL** instance and a **Typesense** instance (managed services —
+  e.g. Railway — or any hosts you control). Set their connection details in `.env`.
 
 ## Quick start
 
 ```bash
 pnpm install            # install all workspace deps
-cp .env.example .env    # local config (safe placeholder defaults)
-docker compose up -d    # start Postgres (5432) + Typesense (8108)
+cp .env.example .env    # set DATABASE_URL + TYPESENSE_* to your services
+pnpm db:migrate         # apply schema to your PostgreSQL
 pnpm dev                # start the app on http://localhost:3000
 ```
 
@@ -54,8 +54,7 @@ Verify:
 
 ```bash
 curl http://localhost:3000/api/health      # {"ok":true,"services":{"database":"ok","search":"ok"}}
-curl http://localhost:8108/health          # Typesense {"ok":true}
-open http://localhost:3000                 # placeholder page
+open http://localhost:3000                 # product discovery page
 ```
 
 ## Database (Spec 002)
@@ -72,8 +71,8 @@ This creates `products` (the canonical catalog store) and `import_runs` (import
 observability). Reads `DATABASE_URL` from `.env`. Validation/normalization of the source
 feed lives in `@ds/shared` (`rawProductSchema`, `normalizeProduct`, `parseProduct`).
 
-> If port `5432` is already in use by a host PostgreSQL, either stop it or point
-> `DATABASE_URL` at another port before `docker compose up -d` / `pnpm db:migrate`.
+> `DATABASE_URL` fully determines where migrations and the app connect — point it at
+> whichever PostgreSQL host/port you use (managed or local).
 
 ## Import the catalog (Spec 003)
 
@@ -153,7 +152,8 @@ Spec 005 API — so it needs PostgreSQL + Typesense running and the catalog impo
 (sections above). Start it with `pnpm dev` and open http://localhost:3000.
 
 ```bash
-docker compose up -d && pnpm db:migrate && pnpm import:products && pnpm reindex:products
+# with DATABASE_URL + TYPESENSE_* set in .env to reachable services:
+pnpm db:migrate && pnpm import:products && pnpm reindex:products
 pnpm dev            # http://localhost:3000
 ```
 
@@ -199,7 +199,7 @@ is the platform readiness check. Contract:
 
 1. **App** — this GitHub repo (Railway reads `railway.json`).
 2. **PostgreSQL** — Railway plugin; provides `DATABASE_URL`.
-3. **Typesense** — Docker image `typesense/typesense:27.1` with a persistent volume and an admin `--api-key`.
+3. **Typesense** — a Railway service from the `typesense/typesense:27.1` image, with a persistent volume and an admin `--api-key`.
 
 ### Environment-variable checklist
 
@@ -222,9 +222,8 @@ Set these on the **app** service. This list matches exactly what the code reads
 | `PORT` | Provided | `3000` | Bound by the server | injected by Railway |
 | `HOSTNAME` | No | `0.0.0.0` | Bind interface | `0.0.0.0` |
 
-Not set on Railway: `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` (local
-`docker-compose` only — the managed Postgres provides `DATABASE_URL`), and
-`TYPESENSE_SEARCH_ONLY_API_KEY` (reserved for a future browser search-only key; no code reads it yet).
+Not needed: `TYPESENSE_SEARCH_ONLY_API_KEY` (reserved for a future browser search-only
+key; no code reads it yet). The app connects to PostgreSQL solely through `DATABASE_URL`.
 
 ### Populate the catalog (manual, one-off — not in the deploy)
 
@@ -296,4 +295,5 @@ curl -s -o /dev/null -w '%{time_total}s\n' 'http://localhost:3000/api/search?q=s
 
 - Never commit real secrets. Only `.env.example` (placeholders) is tracked; `.env` is git-ignored.
 - The Typesense **admin** key is server-side only — never exposed to the browser.
-- Tear down services: `docker compose down` (add `-v` to drop volumes).
+- PostgreSQL and Typesense are provisioned as managed services (e.g. Railway); no local
+  container stack is required — the app just needs `DATABASE_URL` + `TYPESENSE_*` set.

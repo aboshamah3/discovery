@@ -46,8 +46,7 @@ spec: `spec.md`, `plan.md`, `research.md`, `data-model.md`, `contracts/`, `quick
 
 ```bash
 pnpm install
-cp .env.example .env
-docker compose up -d          # local Postgres (5432) + Typesense (8108)
+cp .env.example .env          # set DATABASE_URL + TYPESENSE_* to reachable services
 pnpm db:migrate               # apply pending SQL migrations (idempotent)
 pnpm import:products          # fetch → validate → upsert catalog into Postgres
 pnpm reindex:products         # rebuild the Typesense index from Postgres
