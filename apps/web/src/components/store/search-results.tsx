@@ -123,11 +123,20 @@ export function SearchResults() {
     <div className="flex flex-col items-stretch gap-7">
       {/* Search bar */}
       <div className="relative flex items-center w-full">
-        <SearchIcon className="absolute start-4 text-muted-foreground" size={16} />
+        <label htmlFor="search-input" className="sr-only">
+          Search products
+        </label>
+        <SearchIcon
+          className="absolute start-4 text-muted-foreground"
+          size={16}
+          aria-hidden
+        />
         <Input
           id="search-input"
+          type="search"
           value={query}
           placeholder="Search products…"
+          aria-label="Search products"
           onChange={(e) => setQuery(e.target.value)}
           className="ps-9 pe-4 w-full h-11"
           autoComplete="off"
@@ -156,7 +165,7 @@ export function SearchResults() {
 
         <div className="flex items-center gap-2.5">
           <Select value={sort} onValueChange={(v) => setSort(v as SortValue)}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[180px]" aria-label="Sort results">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -187,6 +196,11 @@ export function SearchResults() {
       </div>
 
       {/* Results */}
+      <div
+        role="region"
+        aria-label="Search results"
+        aria-busy={isInitialLoading || status === "loadingMore"}
+      >
       {status === "error" && items.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-2 py-20 text-center">
           <p className="text-sm text-destructive">Something went wrong.</p>
@@ -240,6 +254,7 @@ export function SearchResults() {
           {hasMore && <div ref={sentinelRef} aria-hidden className="h-px" />}
         </>
       )}
+      </div>
 
       <QuickViewDialog
         productId={quickViewId}

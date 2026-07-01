@@ -15,7 +15,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en">
       <body className="min-h-screen bg-background text-foreground antialiased">
         {/* Minimal shell: a single centered wordmark. No sidebar, no topbar. */}
-        <header className="border-b border-border">
+        <header className="border-b border-border" aria-label={name}>
           <div className="flex items-center justify-center h-16">
             <span className="text-lg font-semibold tracking-tight text-mono">
               {name}

@@ -145,6 +145,35 @@ Pure logic lives in `apps/web/src/lib/api/*` (validation, DTO mapping, paginatio
 errors, health aggregation); engine/DB access is isolated in `apps/web/src/lib/server/*`.
 Contract: [`specs/005-backend-api-contracts/contracts/api.contract.md`](./specs/005-backend-api-contracts/contracts/api.contract.md).
 
+## Frontend — Product Discovery (Spec 007)
+
+The one-page discovery UI is served at `/` and **adopts the Metronic v9.4.0 storefront
+`search-results` component** (only the look is Metronic; behaviour and data are ours). It calls the
+Spec 005 API — so it needs PostgreSQL + Typesense running and the catalog imported + indexed
+(sections above). Start it with `pnpm dev` and open http://localhost:3000.
+
+```bash
+docker compose up -d && pnpm db:migrate && pnpm import:products && pnpm reindex:products
+pnpm dev            # http://localhost:3000
+```
+
+What you get:
+
+- **As-you-type search** — debounced (~250 ms), results replace in place with no page reload.
+- **Grid / list** — a toggle switches layouts (ported Metronic `Card2` / `Card3`).
+- **Sort** — dropdown mapped to the API `sort` param (relevance, price, rating, reviews, newest).
+- **Infinite scroll** — the next page appends automatically while `hasMore` is true.
+- **Quick-view** — clicking a product opens a modal populated from `GET /api/products/[id]`.
+- **States** — skeleton while loading, a clear empty state, and an error state that keeps the page
+  usable; missing/broken images fall back to a placeholder.
+
+The shell is a centered wordmark header only — no sidebar, no topbar, and no cart/checkout/wishlist
+(YAGNI). The adopted Metronic slice is intentionally lean: `apps/web/src/components/ui/*` carries
+only the primitives the page imports, and the design tokens live in `apps/web/src/app/globals.css`.
+Contract: unchanged Spec 005 endpoints. See
+[`specs/007-frontend-discovery/`](./specs/007-frontend-discovery) and
+[`FRONTEND_PLAN.md`](./FRONTEND_PLAN.md).
+
 ## Deployment — Railway (Spec 006)
 
 The backend foundation deploys to [Railway](https://railway.com) from committed
@@ -226,7 +255,42 @@ for the full verification + deploy runbook.
 pnpm lint         # ESLint across the workspace
 pnpm typecheck    # tsc --noEmit in every package/app
 pnpm test         # Vitest (pure lib logic + route handlers with mocked adapters)
+pnpm build        # production build (Next standalone); DS_NO_STANDALONE=1 to skip the
+                  # privileged symlink step when building locally on Windows
 ```
+
+## Performance & accessibility (Spec 008)
+
+Design expectations for the ~4,000-product catalog:
+
+- **Instant-feel search** — Typesense ranks server-side; the client only debounces input (~250 ms)
+  and never re-sorts. Results update without a full page reload.
+- **No layout shift** — image containers reserve fixed dimensions and fall back to a placeholder, so
+  a missing/slow image never reflows the grid.
+- **Accessible controls** — the search box, sort control, and grid/list toggle expose accessible
+  names; the results region announces its count politely (`aria-live`) and marks itself busy while
+  fetching.
+
+Not automatically gated in CI (they need a live stack + browser); verify manually before a release:
+
+```bash
+# with Postgres + Typesense up and the catalog indexed:
+pnpm smoke:search shirt                       # confirms the engine returns ranked results
+# then, against a running app (pnpm dev / start), run Lighthouse on http://localhost:3000
+npx lighthouse http://localhost:3000 --view   # check Performance + Accessibility scores
+curl -s -o /dev/null -w '%{time_total}s\n' 'http://localhost:3000/api/search?q=shirt'
+```
+
+## Release checklist
+
+- [ ] `pnpm lint && pnpm typecheck && pnpm test` green.
+- [ ] `pnpm build` compiles (standalone on Linux/CI).
+- [ ] Migrations apply cleanly (`pnpm db:migrate`) against the target database.
+- [ ] Catalog imported and indexed (`pnpm import:products && pnpm reindex:products`).
+- [ ] `/api/health` returns 200 with both `database` and `search` up.
+- [ ] Discovery page (`/`) searches, sorts, toggles grid/list, scrolls, and opens quick-view.
+- [ ] Required env vars set on the app service (see the checklist above); no `NEXT_PUBLIC_*` admin key.
+- [ ] Lighthouse Performance + Accessibility spot-checked on `/`.
 
 ## Notes
 
