@@ -4,13 +4,14 @@ Fast, one-page product discovery powered by a real search engine (Typesense),
 backed by PostgreSQL. This repository is built spec-by-spec; see
 [`DS_PROJECT_SPEC_PLAN.md`](./DS_PROJECT_SPEC_PLAN.md) and [`specs/`](./specs).
 
-> **Status:** Spec 005 — Backend API Contracts. `apps/web` now exposes three
-> read endpoints: `GET /api/health` (real PostgreSQL + Typesense probes),
-> `GET /api/search` (Typesense-backed, validated query/filters/pagination/facets),
-> and `GET /api/products/[id]` (PostgreSQL-backed detail). All input is Zod-validated
-> at the boundary and every failure uses one consistent error envelope. Builds on the
-> Spec 004 search foundation. PostgreSQL stays the source of truth; the Typesense admin
-> key stays server-side. No product UI yet (Spec 007) — the home route is a placeholder.
+> **Status:** Spec 006 — Railway Deployment Foundation. The backend now deploys to
+> Railway from committed config ([`railway.json`](./railway.json)): a Next.js standalone
+> build, gated pre-deploy migrations (`pnpm db:migrate`), and `/api/health` as the
+> readiness check — see [Deployment](#deployment--railway-spec-006). Builds on Spec 005's
+> three read endpoints (`GET /api/health`, `GET /api/search`, `GET /api/products/[id]`,
+> Zod-validated with one consistent error envelope). PostgreSQL stays the source of truth;
+> the Typesense admin key stays server-side. No product UI yet (Spec 007) — the home route
+> is a placeholder.
 
 ## Stack
 
@@ -29,7 +30,8 @@ packages/db           # PostgreSQL access (@ds/db) — pg client + SQL migration
 packages/search       # Typesense client home (@ds/search) — placeholder until Spec 004
 packages/import       # Catalog import pipeline (@ds/import) — fetch → validate → upsert
 packages/config       # Shared TS base config (@ds/config)
-scripts/              # import-products.ts (Spec 003); reindex/smoke added in later specs
+scripts/              # CLIs: import-products, reindex-products, smoke-search; prepare-standalone (Spec 006)
+railway.json          # Railway deploy config-as-code (Spec 006)
 docker-compose.yml    # Local Postgres + Typesense
 ```
 
@@ -142,6 +144,81 @@ curl -s http://localhost:3000/api/products/17            # 200, or 404 if unknow
 Pure logic lives in `apps/web/src/lib/api/*` (validation, DTO mapping, pagination,
 errors, health aggregation); engine/DB access is isolated in `apps/web/src/lib/server/*`.
 Contract: [`specs/005-backend-api-contracts/contracts/api.contract.md`](./specs/005-backend-api-contracts/contracts/api.contract.md).
+
+## Deployment — Railway (Spec 006)
+
+The backend foundation deploys to [Railway](https://railway.com) from committed
+config-as-code ([`railway.json`](./railway.json)) — no console-only settings. The app
+builds to a **Next.js standalone** server (`output: "standalone"` +
+`outputFileTracingRoot`), migrations run as a gated pre-deploy step, and `/api/health`
+is the platform readiness check. Contract:
+[`specs/006-railway-deployment/contracts/deployment.contract.md`](./specs/006-railway-deployment/contracts/deployment.contract.md).
+
+### What `railway.json` wires
+
+| Phase | Command / value | Why |
+|---|---|---|
+| Build | `pnpm build` | `next build` (standalone) → `prepare-standalone.ts` copies `.next/static` into the bundle |
+| Pre-deploy | `pnpm db:migrate` | apply pending SQL migrations **before** the new version serves (idempotent) |
+| Start | `node apps/web/.next/standalone/apps/web/server.js` | run the self-contained server; binds Railway's `PORT` on `0.0.0.0` |
+| Health check | `/api/health` | promote only when **both** PostgreSQL and Typesense are up (503 otherwise) |
+
+> **Typesense must be reachable for a green deploy.** Because `/api/health` returns 503
+> when search is down, provision the Typesense service before (or with) the app service.
+
+### Railway services
+
+1. **App** — this GitHub repo (Railway reads `railway.json`).
+2. **PostgreSQL** — Railway plugin; provides `DATABASE_URL`.
+3. **Typesense** — Docker image `typesense/typesense:27.1` with a persistent volume and an admin `--api-key`.
+
+### Environment-variable checklist
+
+Set these on the **app** service. This list matches exactly what the code reads
+(`grep -rhoE "process\.env\.[A-Z_][A-Z0-9_]*" apps packages scripts`). The admin
+`TYPESENSE_API_KEY` is **server-side only — never** set it as a `NEXT_PUBLIC_*` var.
+
+| Variable | Required? | Default | Purpose | Example |
+|---|---|---|---|---|
+| `DATABASE_URL` | **Yes** | — | PostgreSQL connection (source of truth) | reference the Postgres plugin |
+| `TYPESENSE_HOST` | **Yes** | — | Typesense host | `typesense.railway.internal` |
+| `TYPESENSE_API_KEY` | **Yes** | — | Admin search key (server-side only) | `<admin-key>` |
+| `TYPESENSE_PORT` | No | `8108` | Typesense port | `8108` |
+| `TYPESENSE_PROTOCOL` | No | `http` | `http` / `https` | `http` |
+| `TYPESENSE_PRODUCTS_COLLECTION` | No | `products` | Product collection name | `products` |
+| `PRODUCTS_SOURCE_URL` | For import | — | Source catalog JSON URL | `https://media.downshift.app/hiring/founding-engineer/items.json` |
+| `IMPORT_BATCH_SIZE` | No | `500` | Import batch size | `500` |
+| `REINDEX_BATCH_SIZE` | No | `500` | Reindex batch size | `500` |
+| `NEXT_PUBLIC_APP_NAME` | No | app default | Display name (browser-exposed by design) | `"DS Product Discovery"` |
+| `PORT` | Provided | `3000` | Bound by the server | injected by Railway |
+| `HOSTNAME` | No | `0.0.0.0` | Bind interface | `0.0.0.0` |
+
+Not set on Railway: `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` (local
+`docker-compose` only — the managed Postgres provides `DATABASE_URL`), and
+`TYPESENSE_SEARCH_ONLY_API_KEY` (reserved for a future browser search-only key; no code reads it yet).
+
+### Populate the catalog (manual, one-off — not in the deploy)
+
+After the first successful deploy, load and index the catalog against production using
+a Railway one-off command / service shell (deliberately **not** part of the pipeline):
+
+```bash
+pnpm import:products     # fetch PRODUCTS_SOURCE_URL → validate → upsert into PostgreSQL
+pnpm reindex:products    # rebuild the Typesense index from PostgreSQL
+```
+
+Both are idempotent, so they are safe to re-run when the catalog changes.
+
+### Verify locally without a Railway account
+
+```bash
+pnpm build                                   # standalone build + static copy
+PORT=3999 pnpm start:standalone &            # run the produced server
+curl -i http://localhost:3999/api/health     # 200 (deps up) / 503 (any dep down)
+```
+
+See [`specs/006-railway-deployment/quickstart.md`](./specs/006-railway-deployment/quickstart.md)
+for the full verification + deploy runbook.
 
 ## Quality gates
 

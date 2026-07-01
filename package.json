@@ -8,8 +8,9 @@
   },
   "scripts": {
     "dev": "pnpm --filter web dev",
-    "build": "pnpm --filter web build",
+    "build": "pnpm --filter web build && tsx scripts/prepare-standalone.ts",
     "start": "pnpm --filter web start",
+    "start:standalone": "node apps/web/.next/standalone/apps/web/server.js",
     "lint": "eslint .",
     "typecheck": "pnpm -r typecheck && tsc -p tsconfig.json",
     "test": "vitest run",

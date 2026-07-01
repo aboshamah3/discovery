@@ -1,5 +1,5 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan:
-specs/002-data-model-validation/plan.md
+shell commands, and other important information, read the current plan
+at specs/006-railway-deployment/plan.md
 <!-- SPECKIT END -->
