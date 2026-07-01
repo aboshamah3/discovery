@@ -1,5 +1,5 @@
 {
-  "name": "@ds/search",
+  "name": "@ds/import",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -15,8 +15,7 @@
   "dependencies": {
     "@ds/db": "workspace:*",
     "@ds/shared": "workspace:*",
-    "dotenv": "^17.4.2",
-    "typesense": "^3.0.6"
+    "dotenv": "^17.4.2"
   },
   "devDependencies": {
     "@types/node": "^22.10.2"

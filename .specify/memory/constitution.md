@@ -1,8 +1,12 @@
 <!--
 SYNC IMPACT REPORT
-Version change: (template / unratified) → 1.0.0
-Rationale: Initial ratification (MAJOR baseline). First concrete constitution
-derived from DS_PROJECT_SPEC_PLAN.md (§2 stack, §11 Backend Rules, §15 build order).
+Version change: 1.0.0 → 1.1.0
+Rationale: MINOR amendment to the binding Technology Constraints — the database is
+now accessed directly via a lightweight PostgreSQL client/driver with NO ORM (Prisma
+removed). Decided during Spec 002 to keep the data layer simple ("just a DB"). All
+other principles (Postgres as source of truth, Zod validation, idempotent scripts,
+quality gates) are unchanged; only the access mechanism (ORM → direct SQL/driver) is
+narrowed.
 
 Principles defined:
   I.   Spec-Driven, Frontend-Last Delivery
@@ -19,6 +23,10 @@ Templates / artifacts checked for alignment:
   ✅ .specify/templates/spec-template.md   — scope/requirements format compatible; no edit needed.
   ✅ .specify/templates/tasks-template.md  — task categories compatible; no edit needed.
   ✅ specs/001-repo-foundation/plan.md     — Constitution Check already maps to these rules.
+  ⚠️ DS_PROJECT_SPEC_PLAN.md               — still references Prisma (§2, §5, §9); superseded
+                                            by this amendment for the data layer. Doc left
+                                            as the original reference; implementation follows
+                                            the constitution (no ORM).
 Follow-up TODOs: none.
 -->
 
@@ -97,7 +105,7 @@ NOT be swapped without a constitution amendment:
 
 - **Monorepo**: one pnpm workspace (`apps/*`, `packages/*`).
 - **App**: Next.js (App Router) + TypeScript (strict).
-- **Database**: PostgreSQL via Prisma (source of truth).
+- **Database**: PostgreSQL accessed directly via a lightweight client/driver — **no ORM** (source of truth).
 - **Search**: Typesense (rebuildable index).
 - **Validation**: Zod at all untrusted boundaries.
 - **Tests**: Vitest (unit/service); Playwright reserved for the frontend spec.
@@ -131,4 +139,4 @@ deviation MUST be justified in writing (in the relevant `plan.md`). Where a prin
 later instruction conflict, the conflict MUST be resolved by amending the constitution
 explicitly, not by silently ignoring the principle.
 
-**Version**: 1.0.0 | **Ratified**: 2026-06-30 | **Last Amended**: 2026-06-30
+**Version**: 1.1.0 | **Ratified**: 2026-06-30 | **Last Amended**: 2026-06-30
