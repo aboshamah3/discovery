@@ -143,8 +143,10 @@ export function SearchResults() {
         />
       </div>
 
-      {/* Result summary + controls */}
-      <div className="flex flex-wrap items-center gap-4 justify-between">
+      {/* Result summary + controls. On mobile the controls sit on top and the
+          result count below (flex-col-reverse); desktop keeps count-left /
+          controls-right. */}
+      <div className="flex flex-col-reverse items-start gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <h3 className="text-sm text-mono font-medium" aria-live="polite">
           {isInitialLoading ? (
             "Searching…"

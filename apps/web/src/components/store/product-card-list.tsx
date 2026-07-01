@@ -31,7 +31,7 @@ export function ProductCardList({
               width={product.imageWidth}
               height={product.imageHeight}
               onClick={open}
-              className="h-[70px] w-full object-contain cursor-pointer"
+              className="h-[70px] w-full object-cover cursor-pointer"
             />
           </Card>
 
@@ -68,20 +68,9 @@ export function ProductCardList({
               )}
               <div className="flex items-center flex-wrap gap-2 lg:gap-4">
                 {product.brand && (
-                  <span className="text-xs font-normal text-secondary-foreground">
-                    Brand:{" "}
-                    <span className="text-xs font-medium text-foreground">
-                      {product.brand}
-                    </span>
-                  </span>
-                )}
-                {product.category && (
-                  <span className="text-xs font-normal text-secondary-foreground">
-                    Category:{" "}
-                    <span className="text-xs font-medium text-foreground">
-                      {product.category}
-                    </span>
-                  </span>
+                  <Badge size="sm" variant="secondary" appearance="light">
+                    {product.brand}
+                  </Badge>
                 )}
                 {product.reviews !== undefined && (
                   <span className="text-xs font-normal text-secondary-foreground">

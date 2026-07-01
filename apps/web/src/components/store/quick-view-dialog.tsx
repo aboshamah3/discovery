@@ -84,7 +84,7 @@ export function QuickViewDialog({
                   alt={product.title}
                   width={product.imageWidth}
                   height={product.imageHeight}
-                  className="h-56 w-full object-contain"
+                  className="h-56 w-full object-cover"
                 />
               </div>
 

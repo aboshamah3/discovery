@@ -41,7 +41,7 @@ export function ProductCardGrid({
               width={product.imageWidth}
               height={product.imageHeight}
               onClick={open}
-              className="h-[180px] w-full object-contain shrink-0 cursor-pointer"
+              className="h-[180px] w-full object-cover shrink-0 cursor-pointer"
             />
           </Card>
 
@@ -53,9 +53,11 @@ export function ProductCardGrid({
             {product.title}
           </button>
 
-          {(product.brand || product.category) && (
-            <div className="px-2.5 mt-1 text-xs text-secondary-foreground truncate">
-              {[product.brand, product.category].filter(Boolean).join(" · ")}
+          {product.brand && (
+            <div className="px-2.5 mt-1.5">
+              <Badge size="sm" variant="secondary" appearance="light">
+                {product.brand}
+              </Badge>
             </div>
           )}
         </div>
