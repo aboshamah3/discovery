@@ -4,13 +4,13 @@ Fast, one-page product discovery powered by a real search engine (Typesense),
 backed by PostgreSQL. This repository is built spec-by-spec; see
 [`DS_PROJECT_SPEC_PLAN.md`](./DS_PROJECT_SPEC_PLAN.md) and [`specs/`](./specs).
 
-> **Status:** Spec 004 — Typesense Search Foundation. `@ds/search` provides a
-> server-side client, the product collection schema, a pure document mapper + search
-> query builder, and an idempotent reindex (`pnpm reindex:products`) that rebuilds the
-> index from PostgreSQL in bounded batches. Builds on the Spec 003 import. Search is a
-> rebuildable index — PostgreSQL stays the source of truth. No product API route yet
-> (Spec 005) and no product UI (Spec 007); `GET /api/health` still returns a **static**
-> success.
+> **Status:** Spec 005 — Backend API Contracts. `apps/web` now exposes three
+> read endpoints: `GET /api/health` (real PostgreSQL + Typesense probes),
+> `GET /api/search` (Typesense-backed, validated query/filters/pagination/facets),
+> and `GET /api/products/[id]` (PostgreSQL-backed detail). All input is Zod-validated
+> at the boundary and every failure uses one consistent error envelope. Builds on the
+> Spec 004 search foundation. PostgreSQL stays the source of truth; the Typesense admin
+> key stays server-side. No product UI yet (Spec 007) — the home route is a placeholder.
 
 ## Stack
 
@@ -116,12 +116,39 @@ Config (from `.env`): `TYPESENSE_HOST/PORT/PROTOCOL/API_KEY`, `TYPESENSE_PRODUCT
 to the browser. Logic lives in `@ds/search`; `scripts/reindex-products.ts` and
 `scripts/smoke-search.ts` are the thin CLIs. The product-facing search API is Spec 005.
 
+## API (Spec 005)
+
+With PostgreSQL populated and the index built (above), the app serves three read
+endpoints. Start it with `pnpm dev` (http://localhost:3000).
+
+```bash
+curl -i http://localhost:3000/api/health                 # 200 both up, 503 if any dep down
+curl -s 'http://localhost:3000/api/search?q=shirt&brand=Acme&inStock=true&page=1&perPage=24'
+curl -s http://localhost:3000/api/products/17            # 200, or 404 if unknown
+```
+
+- **`GET /api/health`** — real reachability probes; preserves the
+  `{ ok, services: { database, search } }` shape (200 all-up, 503 any-down).
+- **`GET /api/search`** — `q, page, perPage, sort, brand, category, tag, inStock`;
+  returns `{ query, page, perPage, found, totalPages, hasMore, results, facets? }`.
+  Page size defaults to 24, capped at 60 (reused from `@ds/search`). Invalid params
+  → `400` without touching the engine.
+- **`GET /api/products/[id]`** — `{ product }` detail from PostgreSQL, or `404`.
+- **Errors** — every failure returns `{ error: { code, message } }` with a stable
+  code (`bad_request` 400 · `not_found` 404 · `internal` 500 · `unavailable` 503).
+  Responses expose only documented DTO fields — never the admin key or internal
+  columns (`source_hash`, import bookkeeping).
+
+Pure logic lives in `apps/web/src/lib/api/*` (validation, DTO mapping, pagination,
+errors, health aggregation); engine/DB access is isolated in `apps/web/src/lib/server/*`.
+Contract: [`specs/005-backend-api-contracts/contracts/api.contract.md`](./specs/005-backend-api-contracts/contracts/api.contract.md).
+
 ## Quality gates
 
 ```bash
 pnpm lint         # ESLint across the workspace
 pnpm typecheck    # tsc --noEmit in every package/app
-pnpm test         # Vitest (smoke + health-route tests)
+pnpm test         # Vitest (pure lib logic + route handlers with mocked adapters)
 ```
 
 ## Notes
