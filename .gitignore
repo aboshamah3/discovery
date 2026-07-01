@@ -23,3 +23,6 @@ coverage/
 # misc
 .DS_Store
 *.tsbuildinfo
+
+# local agent/editor config (not project content)
+.claude/

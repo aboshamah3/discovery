@@ -650,40 +650,71 @@ Create Spec 006 for DS Product Discovery Railway deployment foundation. Configur
 
 ---
 
-### Spec 007 — Frontend Product Discovery Page
+### Spec 007 — Frontend Product Discovery Page (Metronic-adopted)
 
-**Goal:** Build the final one-page frontend after the backend foundation is stable.
+**Goal:** Build the final one-page frontend after the backend foundation is stable, by
+**adopting the Metronic v9.4.0 storefront `search-results` component** (TypeScript/Next.js
+variant) rather than hand-building the UI. Only the look comes from Metronic; the behavior and
+data come from our Spec 005 API. Full detail lives in [`FRONTEND_PLAN.md`](./FRONTEND_PLAN.md).
 
 **Frontend should only start after Specs 001–006 are complete.**
 
+**Adopted source:** `metronic-tailwind-react-demos/typescript/nextjs/app/(protected)/store-client/`
+— `search-results-grid`/`search-results-list` are the same `SearchResults` component
+(`mode="card" | "list"`, built-in grid/list toggle), with `Card2` (grid) and `Card3` (list).
+
+**Decisions (locked):**
+
+- Toolbar = search box + grid/list toggle + **sort dropdown wired to the API**. Filter sheet and
+  Today/Week/Month period toggle are **stripped**.
+- Product click opens a **quick-view modal** backed by `GET /api/products/[id]`.
+- App shell = **centered text wordmark header only** — no sidebar, no topbar.
+- Cart/checkout/wishlist context and Add-to-Cart are **stripped** (YAGNI, constitution V).
+
 **Deliverables:**
 
-- Top search form.
-- Debounced as-you-type search.
-- Result grid layout.
-- One additional layout, based on the provided resource or design reference.
-- Layout switcher if useful.
-- Load-more or infinite scroll.
-- Loading, empty, and error states.
-- Product cards using image dimensions safely.
+- Minimal port of the Metronic Tailwind v4 design system into `apps/web` (theme CSS + `cn` +
+  only the UI primitives used: `button, input, badge, card, select, toggle-group, dialog`).
+- Ported `SearchResults` + `Card2`/`Card3`, cart context removed.
+- Top search form with debounced as-you-type search (no full page reload).
+- Grid and list layouts with the built-in toggle.
+- Sort dropdown mapped to API sort options.
+- Infinite scroll (append pages while `hasMore`).
+- Quick-view modal from `/api/products/[id]`.
+- Loading (skeleton), empty, and error states.
+- Product cards using image dimensions safely; graceful missing-image handling.
 - Mobile responsive page.
-- Optional URL query sync.
 
 **Acceptance criteria:**
 
-- Search updates without full page reload.
-- Debounce prevents excessive API calls.
-- Results are relevance-ranked.
-- Load-more/infinite scroll works.
-- Grid layout is polished.
-- Second layout follows provided reference.
-- Images do not cause layout shift where possible.
+- Search updates without full page reload; debounce prevents excessive API calls.
+- Results are relevance-ranked; the sort dropdown reorders via the API.
+- Grid and list layouts both render and the toggle switches them.
+- Infinite scroll loads more until `hasMore` is false.
+- Clicking a product opens the quick-view modal from `/api/products/[id]`.
+- No sidebar/topbar (centered wordmark header); no cart/checkout/wishlist anywhere.
+- Images do not cause layout shift where dimensions are known.
 - Page works well on desktop and mobile.
+- Backend contracts are unchanged; `pnpm lint && pnpm typecheck && pnpm test` green.
 
 **Spec Kit prompt:**
 
 ```txt
-Create Spec 007 for DS Product Discovery frontend page. Use the existing /api/search and /api/products/[id] contracts. Build the one-page search UI with a top search form, debounced as-you-type search, no page reload, product grid, one additional layout based on the provided design resource, load-more or infinite scroll, and polished loading/empty/error states. Do not change backend contracts unless absolutely necessary.
+Create Spec 007 for the DS Product Discovery frontend. Adopt the Metronic v9.4.0 storefront
+"search-results" component (TypeScript/Next.js variant) as the product-discovery UI instead of
+building from scratch: reuse its SearchResults layout, the grid card (Card2) and list card
+(Card3), the built-in grid/list toggle, and the Metronic Tailwind v4 visual system. Wire it to
+the existing Spec 005 contracts unchanged — GET /api/search (q, page, perPage, sort) and
+GET /api/products/[id]. Implement debounced as-you-type search, infinite scroll (append pages
+while hasMore), a sort dropdown mapped to the API sort options, and clear loading/empty/error
+states. Clicking a product opens a lightweight quick-view modal backed by /api/products/[id].
+Strip everything out of scope: the cart/checkout/wishlist context and Add-to-Cart, the filter
+sheet, the period toggle, and the entire (protected) sidebar + topbar. The app shell is a
+minimal centered text wordmark header (no sidebar, no topbar) above the search + results. Port
+only the minimal UI-kit subset the component needs (button, input, badge, card, select,
+toggle-group, dialog) plus Tailwind v4 + theme CSS and the cn helper into apps/web. Do not
+change any backend contract. Keep pnpm lint, typecheck, and test green with no database or
+search engine running.
 ```
 
 ---
