@@ -29,12 +29,16 @@ export interface SearchInput {
   filters?: SearchFilters;
 }
 
+/** Per-field infix mode (aligned positionally with `query_by`). */
+export type FieldInfix = "off" | "always" | "fallback";
+
 /** The concrete Typesense search parameters this layer emits. */
 export interface SearchRequestParams {
   q: string;
   query_by: string;
   query_by_weights: string;
   prefix: boolean;
+  infix: FieldInfix[];
   num_typos: string;
   typo_tokens_threshold: number;
   drop_tokens_threshold: number;
@@ -75,6 +79,11 @@ export function buildSearchParams(input: SearchInput = {}): SearchRequestParams 
     query_by: "title,brand,category,tags,description",
     query_by_weights: "5,4,3,3,1",
     prefix: true,
+    // Substring matching on `title` only (positionally aligned with query_by).
+    // "always" makes infix hits ("handwoven" for query "woven") appear
+    // alongside exact/prefix hits; _text_match then ranks the exact/prefix
+    // token ("woven") above the infix hit, so exact matches surface first.
+    infix: ["always", "off", "off", "off", "off"],
     num_typos: "2,2,1,1,1",
     typo_tokens_threshold: 1,
     drop_tokens_threshold: 0,

@@ -103,14 +103,21 @@ pnpm smoke:search "rattan" # run a sample search and print the top hits
 ```
 
 - **Rebuildable index**: every document is derived solely from a PostgreSQL row —
-  drop the collection and `reindex:products` reconstructs it from scratch. PostgreSQL
-  stays the source of truth; Typesense is never authoritative.
+  `reindex:products` **drops and recreates** the collection from the current schema,
+  then reconstructs it from scratch. PostgreSQL stays the source of truth; Typesense
+  is never authoritative. (Recreating on reindex is what lets schema changes — e.g. the
+  title infix index — take effect.)
 - **Idempotent**: documents are upserted by `id`, so re-running never duplicates.
 - **Bounded batches**: indexes in chunks of `REINDEX_BATCH_SIZE` (default `500`) and
   reports products-read / documents-indexed.
 - **Search**: `buildSearchParams` gives typo tolerance, prefix matching, relevance
   ranking (then rating, then reviews), filters (brand/category/tag/inStock), and a
   page size that defaults to 24 and is capped at 60.
+- **Partial (substring) matching**: `title` is indexed with Typesense **infix**, so a
+  query matches *inside* a word — e.g. `woven` finds both `Woven Hanging` and
+  `Handwoven …`. Ranking keeps it useful: an exact/whole-word token (`woven`) scores far
+  higher than an infix hit (`handwoven`), so exact matches always sort first. Infix is
+  enabled on the title field only (it is memory-heavy); other fields stay prefix-only.
 
 Config (from `.env`): `TYPESENSE_HOST/PORT/PROTOCOL/API_KEY`, `TYPESENSE_PRODUCTS_COLLECTION`,
 `REINDEX_BATCH_SIZE`. The **admin** `TYPESENSE_API_KEY` is server-side only — never exposed

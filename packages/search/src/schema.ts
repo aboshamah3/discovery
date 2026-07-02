@@ -17,7 +17,10 @@ export function productsCollectionSchema(): CollectionCreateSchema {
     name: collectionName(),
     fields: [
       { name: "id", type: "string" },
-      { name: "title", type: "string", sort: true },
+      // `infix: true` builds a suffix index so a query can match *inside* a
+      // title token (e.g. "woven" → "handwoven"); enabled on title only, as
+      // infix indexing is memory-heavy and titles are the primary match field.
+      { name: "title", type: "string", sort: true, infix: true },
       { name: "brand", type: "string", facet: true, optional: true },
       { name: "category", type: "string", facet: true, optional: true },
       { name: "tags", type: "string[]", facet: true },

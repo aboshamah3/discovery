@@ -9,6 +9,7 @@ describe("buildSearchParams — query + ranking", () => {
     expect(p.query_by).toBe("title,brand,category,tags,description");
     expect(p.query_by_weights).toBe("5,4,3,3,1");
     expect(p.prefix).toBe(true);
+    expect(p.infix).toEqual(["always", "off", "off", "off", "off"]);
     expect(p.num_typos).toBe("2,2,1,1,1");
     expect(p.drop_tokens_threshold).toBe(0);
     expect(p.sort_by).toBe("_text_match:desc,rating:desc,reviews:desc");

@@ -3,6 +3,7 @@ import { config } from "dotenv";
 import { closePool } from "@ds/db";
 
 import { getSearchClient } from "./client";
+import { recreateCollection } from "./collection";
 import type { ProductSearchDocument } from "./document";
 import { buildSearchParams } from "./query";
 import { reindexProducts, type ReindexSummary } from "./reindex";
@@ -29,6 +30,9 @@ export async function runReindex(): Promise<ReindexSummary> {
   const client = getSearchClient();
   const batchSize = resolveBatchSize(process.env.REINDEX_BATCH_SIZE);
   try {
+    // Rebuild from scratch so schema changes (e.g. the title infix index) apply;
+    // reindexProducts' internal ensure() is then a no-op.
+    await recreateCollection(client);
     return await reindexProducts({
       reader: createDbProductReader(),
       index: createTypesenseIndex(client),
